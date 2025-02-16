@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "thinkingsquishy"
 version = "0.1.0"
-description = "A basic starter for Python packages."
+description = "A soft body robotics project based on work in DittoGym."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
