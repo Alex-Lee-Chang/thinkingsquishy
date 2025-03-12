@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
+requires = ["setuptools", "setuptools-scm", "poetry-core"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,10 +7,13 @@ name = "thinkingsquishy"
 version = "0.1.0"
 description = "A basic starter for Python packages."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = "==3.11.9"
 dependencies = [
    "matplotlib",
-   "numpy",
+   "numpy==1.23.5",
+   "dittogym@git+https://github.com/suninghuang19/dittogym.git",
+   "opencv-python",
+   "wandb",
 ]
 
 [project.optional-dependencies]
