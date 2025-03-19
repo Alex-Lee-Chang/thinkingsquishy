@@ -186,17 +186,17 @@ for i_episode in itertools.count(1):
             final_action = env.action_space.sample()
         else:
             if args.residual:
-                coarse_action, coarse_mean, coarse_std = agent.select_coarse_action(state)
-                coarse_action_img = coarse_action
+                coarse_action, coarse_mean, coarse_std = agent.select_coarse_action(state) # Forward pass through coarse model
+                coarse_action_img = coarse_action # Consider coarse action as fine action input (not actually an image)
                 coarse_action = coarse_action.reshape(1, 2, args.coarse_action_res, args.coarse_action_res)
                 coarse_action = exp_upsample_list[int(math.log2(args.action_res / args.coarse_action_res))]\
-                    (torch.tensor(coarse_action, dtype=torch.float32, device=device)).detach().cpu().numpy()[0]
-                residual_action, mask = agent.select_action(state, coarse_action)
-                final_action = mask * residual_action + (1 - mask) * coarse_action.reshape(-1)
+                    (torch.tensor(coarse_action, dtype=torch.float32, device=device)).detach().cpu().numpy()[0] # Upscale coarse action resolution to match grid count of fine action grid
+                residual_action, mask = agent.select_action(state, coarse_action) # Produce residual actions + mask
+                final_action = mask * residual_action + (1 - mask) * coarse_action.reshape(-1) # Combine coarse action, residual (fine) actions, and masking
             else:
-                final_action, _ = agent.select_action(state)
+                final_action, _ = agent.select_action(state) # Otherwise, just apply coarse actions
 
-            # log action image (only log x direction)
+            # log action image (only log x direction) --> purely for wandb, can probably ignore
             if args.wandb and total_numsteps % 200 == 0:
                 final_action_ = ((final_action.reshape(2, args.action_res, args.action_res)[0] + 1) / 2 * 255)
                 final_action_ = np.clip(cv2.resize(final_action_, (upsampled_action_res, upsampled_action_res),\

@@ -47,9 +47,9 @@ class shapematch(dittogym):
 
     def step(self, action):
         self.update_grid_actuation(action)
-        for i in range(self.repeat_times):
+        for i in range(self.repeat_times): # self.repeat_times gives how many times to update simulation per step
             self.update_particle_actuation()
-            self.p2g()
+            self.p2g() 
             self.grid_operation()
             self.g2p()
         # state (relative x, y)

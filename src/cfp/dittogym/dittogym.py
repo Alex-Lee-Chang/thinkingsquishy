@@ -247,13 +247,13 @@ class dittogym(gym.Env, ABC):
             action[0],
             (final_action_res, final_action_res),
             interpolation=cv2.INTER_CUBIC,
-        )
+        ) # interpolate action output to grid
         action_y = cv2.resize(
             action[1],
             (final_action_res, final_action_res),
             interpolation=cv2.INTER_CUBIC,
-        )
-        action = np.stack([action_x, action_y], axis=0)
+        ) # interpolate action output to grid
+        action = np.stack([action_x, action_y], axis=0) # Combine x and y actions
         self.action = np.clip(self.max_actuation * action, a_min=-self.max_actuation, a_max=self.max_actuation)
         if not np.isnan(self.center_point).any():
             x = self.center_point[0] - self.anchor[None][0] if fix_x is None else fix_x
