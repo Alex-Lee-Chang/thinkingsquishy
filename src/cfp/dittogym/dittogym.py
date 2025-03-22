@@ -92,7 +92,7 @@ class dittogym(gym.Env, ABC):
         self.observation_space = gym.spaces.Box(low=low, high=high, dtype=np.uint8)
         self.cfg = cfg
 
-    def add_circle(self, x, y, r, is_object=False):
+    def add_circle(self, x, y, r, is_object=False): #For all add_ functions, is_object=True means it's an obstacle/object to manipulate, false means it's the robot
         '''
         (x, y) circle center
         r circle radius
@@ -240,9 +240,11 @@ class dittogym(gym.Env, ABC):
         self.state = state
 
     def update_grid_actuation(self, action, fix_x=None, fix_y=None):
-        side_length = int(np.sqrt(self.action_space.shape[0] / 2))
-        final_action_res = int(side_length * self.action_res_resize)
-        action = action.reshape(2, side_length, side_length)
+        # Action_space is probably the x and y actions in a 1D array, dividing by 2 gives points with actions, sqrt and int case gives side length of entire square grid
+        side_length = int(np.sqrt(self.action_space.shape[0] / 2)) # 1 is dist between grid points
+        final_action_res = int(side_length * self.action_res_resize) # Scales by configurable value, TODO find why, how this affects action sizes
+        action = action.reshape(2, side_length, side_length) # Reshapes to be x and y component, x cord of grid particle, y cord of grid particle
+        #cv2 like images uses cubic interpolation to make a continuous actions space, with size of the scaled action res, interpolating between the given  actions
         action_x = cv2.resize(
             action[0],
             (final_action_res, final_action_res),
@@ -253,32 +255,36 @@ class dittogym(gym.Env, ABC):
             (final_action_res, final_action_res),
             interpolation=cv2.INTER_CUBIC,
         )
-        action = np.stack([action_x, action_y], axis=0)
-        self.action = np.clip(self.max_actuation * action, a_min=-self.max_actuation, a_max=self.max_actuation)
+
+        action = np.stack([action_x, action_y], axis=0) # recombines the x and y actions after cv2 interpolation
+        self.action = np.clip(self.max_actuation * action, a_min=-self.max_actuation, a_max=self.max_actuation) # scales by max_actuation and limits it
+
+        # makes x and y the center if they exist and are not set to be fixed
         if not np.isnan(self.center_point).any():
             x = self.center_point[0] - self.anchor[None][0] if fix_x is None else fix_x
             y = self.center_point[1] - self.anchor[None][1] if fix_y is None else fix_y
         else:
             x = self.prev_location[0] - self.anchor[None][0] if fix_x is None else fix_x
             y = self.prev_location[1] - self.anchor[None][1] if fix_y is None else fix_y
+        # base_index is the coordinates of the bottom left of the action grid relative to the anchor, where the action grid is centered at x, y
         base_index = np.array([int(x * self.inv_dx - 0.5 * final_action_res),
                                 int(y * self.inv_dx - 0.5 * final_action_res)])
         # grid term use the exact same arrangment as in mpm
-        grid_actuation = np.zeros((2, self.n_grid, self.n_grid))
-        if base_index[0] + final_action_res > self.n_grid:
+        grid_actuation = np.zeros((2, self.n_grid, self.n_grid)) #n_grid has its bottom left at the anchor point probably, is the main grid space
+        if base_index[0] + final_action_res > self.n_grid: #Checks if right of action grid is outside right boundary of n grid
             base_index[0] = self.n_grid - final_action_res
-        if base_index[0] < 0:
+        if base_index[0] < 0: # Checks left of action grid
             base_index[0] = 0
-        if base_index[1] + final_action_res > self.n_grid:
+        if base_index[1] + final_action_res > self.n_grid: # Checks top of action grid
             base_index[1] = self.n_grid - final_action_res
-        if base_index[1] < 0:
+        if base_index[1] < 0: # Checks bottom of action grid
             base_index[1] = 0
         grid_actuation[
             :,
             base_index[0] : base_index[0] + final_action_res,
             base_index[1] : base_index[1] + final_action_res,
-        ] = self.action
-        self.grid_actuation.from_numpy(grid_actuation.transpose(1, 2, 0))
+        ] = self.action # put the action into the action size sub section of the full n grid
+        self.grid_actuation.from_numpy(grid_actuation.transpose(1, 2, 0)) # Transpose is to convert to the format that taichi accepts
         # if not os.path.exists("./action"):
         #     os.makedirs("./action")
         # cv2.imwrite('./action/x_.png', 255 * (self.grid_actuation.to_numpy()[:, :, 0].transpose(1, 0)[::-1] + self.max_actuation) / (2 * self.max_actuation))
@@ -287,23 +293,28 @@ class dittogym(gym.Env, ABC):
 
     @ti.kernel
     def update_particle_actuation(self):
-        # G2P for action signals
-        for p in self.x:
+        # G2P (Grid to particle) for action signals
+        for p in self.x: # self.x is position of each particle
             if (
-                self.x[p][0] - self.anchor[None][0] > 1e-5
+                self.x[p][0] - self.anchor[None][0] > 1e-5  # TODO figure out exactly what anchor is, seems to be like an origin but it gets updated sometimes
                 and self.x[p][0] - self.anchor[None][0] < 1.0 - 1e-5
             ):
-                base = ((self.x[p] - self.anchor[None]) * self.inv_dx - 0.5).cast(int)
+                # Position of the bottom left corner of the 3x3 grid centered around the grid point closest to the particle
+                base = ((self.x[p] - self.anchor[None]) * self.inv_dx - 0.5).cast(int) 
+                 # Position of the particle relative to the bottom left corner, in grid units (1 is distance between grid points, bounded between 0.5, 1.5)
                 fx = (self.x[p] - self.anchor[None]) * self.inv_dx - base.cast(float)
+
+                # weights for how much each grid point on the 3x3 grid affects the particle using bicubic interpolation
                 w = [
-                    0.5 * (1.5 - fx) ** 2,
-                    0.75 - (fx - 1.0) ** 2,
-                    0.5 * (fx - 0.5) ** 2,
+                    0.5 * (1.5 - fx) ** 2, # left/lower grid point
+                    0.75 - (fx - 1.0) ** 2, # center grid point
+                    0.5 * (fx - 0.5) ** 2, # right/upper grid point
                 ]
                 new_actuation = ti.Vector.zero(float, 2)
+                # Iterates through the 3x3 grid to calculate total influence of grid actions on the particle
                 for i, j in ti.static(ti.ndrange(3, 3)):
                     g_actuation = self.grid_actuation[base + ti.Vector([i, j])]
-                    weight = w[i][0] * w[j][1]
+                    weight = w[i][0] * w[j][1] # 0 is x, 1 is y
                     new_actuation += weight * g_actuation
                 self.particle_actuation[p] = new_actuation
 
@@ -370,8 +381,8 @@ class dittogym(gym.Env, ABC):
 
     @ti.kernel
     def p2g(self):
-        for i, j in self.grid_m:
-            self.grid_v[i, j] = [0, 0]
+        for i, j in self.grid_m: # mass grid ?
+            self.grid_v[i, j] = [0, 0] # Velocity grid ?
             self.grid_m[i, j] = 0
 
         for p in self.x:  # Particle to grid (P2G)
@@ -381,28 +392,31 @@ class dittogym(gym.Env, ABC):
                 self.x[p][0] - self.anchor[None][0] > 1e-5
                 and self.x[p][0] - self.anchor[None][0] < 1.0 - 1e-5
             ):
-                base = ((self.x[p] - self.anchor[None]) * self.inv_dx - 0.5).cast(int)
+                #Converts to grid and relative grid coordinates, w is weights for bicubic interpolation (see update_particle_actuation)
+                base = ((self.x[p] - self.anchor[None]) * self.inv_dx - 0.5).cast(int)  
                 fx = (self.x[p] - self.anchor[None]) * self.inv_dx - base.cast(float)
                 w = [0.5 * (1.5 - fx) ** 2, 0.75 - (fx - 1) ** 2, 0.5 * (fx - 0.5) ** 2]
+
+                # F is deformation gradient tensor, C is velocity gradient(?)
                 self.F[p] = (
-                    ti.Matrix.diag(dim=2, val=1) + self.dt * self.C[p]
+                    ti.Matrix.diag(dim=2, val=1) + self.dt * self.C[p] #Calculate new F based on C and time step, multiples to add on top of previous F
                 ) @ self.F[p]
-                self.U[p], self.sig[p], self.V[p] = ti.svd(self.F[p])
-                if self.material[p] == 0:
-                    self.F[p] = self.compute_von_mises(
+                self.U[p], self.sig[p], self.V[p] = ti.svd(self.F[p]) # Singular value decomposition of F
+                if self.material[p] == 0: # == 0 means the robot, not an object (?)
+                    self.F[p] = self.compute_von_mises( # TODO check if this evaluates plastic deformation thresholds
                         self.F[p], self.U[p], self.sig[p], self.V[p], self.yield_stress, mu
                     )
                 J = self.F[p].determinant()
                 r, s = ti.polar_decompose(self.F[p])
-                act = (
+                act = ( # Get the x and y actions
                     ti.Matrix([[1.0, 0.0], [0.0, 0.0]]) * self.particle_actuation[p][0]
                     + ti.Matrix([[0.0, 0.0], [0.0, 1.0]]) * self.particle_actuation[p][1]
                 )
-                cauchy = (
+                cauchy = ( # Formula in the paper
                     2 * mu * (self.F[p] - r) @ self.F[p].transpose()
                     + ti.Matrix.diag(2, la * (J - 1) * J)
                 )
-                if self.material[p] == 0:
+                if self.material[p] == 0: 
                     cauchy += self.F[p] @ act @ self.F[p].transpose()
                 stress = (
                     -(self.dt * self.p_vol * 4 * self.inv_dx * self.inv_dx) * cauchy
