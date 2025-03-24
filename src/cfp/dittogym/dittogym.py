@@ -241,7 +241,7 @@ class dittogym(gym.Env, ABC):
 
     def update_grid_actuation(self, action, fix_x=None, fix_y=None):
         # Action_space is probably the x and y actions in a 1D array, dividing by 2 gives points with actions, sqrt and int case gives side length of entire square grid
-        side_length = int(np.sqrt(self.action_space.shape[0] / 2)) # 1 is dist between grid points
+        side_length = int(np.sqrt(self.action_space.shape[0] / 2)) # 1 unit is dist between grid points
         final_action_res = int(side_length * self.action_res_resize) # Scales by configurable value, TODO find why, how this affects action sizes
         action = action.reshape(2, side_length, side_length) # Reshapes to be x and y component, x cord of grid particle, y cord of grid particle
         #cv2 like images uses cubic interpolation to make a continuous actions space, with size of the scaled action res, interpolating between the given  actions
@@ -416,20 +416,20 @@ class dittogym(gym.Env, ABC):
                     2 * mu * (self.F[p] - r) @ self.F[p].transpose()
                     + ti.Matrix.diag(2, la * (J - 1) * J)
                 )
-                if self.material[p] == 0: 
+                if self.material[p] == 0: # If the object is the robot, add the action to the stress
                     cauchy += self.F[p] @ act @ self.F[p].transpose()
-                stress = (
+                stress = ( # Converts to a force density, weighted by grid resolution and volume of the particle
                     -(self.dt * self.p_vol * 4 * self.inv_dx * self.inv_dx) * cauchy
                 )
-                affine = stress + self.p_mass[p] * self.C[p]
+                affine = stress + self.p_mass[p] * self.C[p] #Combines angular momentum and stress, like MPM (?)
                 for i, j in ti.static(ti.ndrange(3, 3)):
                     offset = ti.Vector([i, j])
                     dpos = (offset.cast(float) - fx) * self.dx
                     weight = w[i][0] * w[j][1]
                     self.grid_v[base + offset] += weight * (
-                        self.p_mass[p] * self.v[p] + affine @ dpos
+                        self.p_mass[p] * self.v[p] + affine @ dpos #Adds linear and affine momentum together based on weights as used before
                     )
-                    self.grid_m[base + offset] += weight * self.p_mass[p]
+                    self.grid_m[base + offset] += weight * self.p_mass[p] # Adds to the grid
     
     @ti.kernel
     def g2p(self):
@@ -451,8 +451,8 @@ class dittogym(gym.Env, ABC):
                     dpos = ti.Vector([i, j]).cast(float) - fx
                     g_v = self.grid_v[base + ti.Vector([i, j])]
                     weight = w[i][0] * w[j][1]
-                    new_v += weight * g_v
-                    new_C += 4 * self.inv_dx * weight * g_v.outer_product(dpos)
+                    new_v += weight * g_v # Combine velocities of grid to particle
+                    new_C += 4 * self.inv_dx * weight * g_v.outer_product(dpos) # Calculates C of particle based on grid's C 
                 self.v[p], self.C[p] = new_v, new_C
                 self.x[p] += self.dt * self.v[p]
     

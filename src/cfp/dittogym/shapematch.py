@@ -120,20 +120,21 @@ class shapematch(dittogym):
     @ti.kernel
     def grid_operation(self):
         # specific grid operation for SHAPE_MATCH
-        for i, j in self.grid_m:
+        for i, j in self.grid_m: # Iterate through all grid points in the main grid
             inv_m = 1 / (self.grid_m[i, j] + 1e-10)
-            self.grid_v[i, j] = inv_m * self.grid_v[i, j]
-            self.grid_v[i, j][0] += self.dt * self.gravity[None][0]
+            self.grid_v[i, j] = inv_m * self.grid_v[i, j] #Grid point's velocity normalized by its mass
+            self.grid_v[i, j][0] += self.dt * self.gravity[None][0] # add gravity (0 in the config file)
             self.grid_v[i, j][1] += self.dt * self.gravity[None][1]
             # self.grid_v[i, j] = 0.999 * self.grid_v[i, j]
             # # infinite horizon
             # up
-            if j < self.bound * 20 and self.grid_v[i, j][1] < 0:
+            if j < self.bound * 20 and self.grid_v[i, j][1] < 0: # If we're in the lower 20 grid points, and the y velocity is downward
                 self.grid_v[i, j] = [0, 0]
+                # For shapematch, everything below here does nothing
                 normal = ti.Vector([0.0, 1.0])
                 lsq = (normal**2).sum()
                 if lsq > 0.5:
-                    if ti.static(self.coeff < 0):
+                    if ti.static(self.coeff < 0): # Uncertain what coeff is, it's a constant defined in dittogym.py
                         self.grid_v[i, j] = [0, 0]
                     else:
                         lin = self.grid_v[i, j].dot(normal)
