@@ -46,7 +46,7 @@ parser.add_argument('--hidden_size', type=int, default=256, metavar='N',
 parser.add_argument('--replay_size', type=int, default=200000, metavar='N',
                     help='size of replay buffer (default: 200000)')
 parser.add_argument('--start_steps', type=int, default=500, metavar='N',
-                    help='steps sampling random actions (default: 6000)')
+                    help='steps sampling random actions (default: 500)')
 parser.add_argument('--updates_per_step', type=int, default=1, metavar='N',
                     help='model updates per simulator step (default: 1)')
 parser.add_argument('--target_update_interval', type=int, default=1, metavar='N',
@@ -233,6 +233,7 @@ for i_episode in itertools.count(1):
                 updates += 1
                 
         next_state, reward, terminated, truncated, _ = env.step(final_action)
+        # print("trunc: " + str(truncated) + "term: " + str(terminated))
         # render
         if args.visualize and render:
             env.render(gui, record=True)
@@ -265,6 +266,8 @@ for i_episode in itertools.count(1):
 
     utils.generate_video(file_path, generate_video)
 
+    # print(str(args.max_num_steps))
+    # print(str(args.max_episode_steps))
     if total_numsteps > args.max_num_steps:
         break
 

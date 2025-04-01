@@ -19,6 +19,7 @@ class shapematch(dittogym):
             self.add_self_designed_robot(robot_img_path, particles_num)
         else:
             self.add_circle(0.0, 0.0, 0.17, is_object=False)
+        self.add_rectangular(0.08, -0.4, 0.01, 0.3, is_object=True)
         print("n_particles: ", self.n_particles, "action_space: ", self.action_space.shape)
         self.target_robot = cv2.imread(os.path.join(self.current_directory,\
             "./target_for_shape_match/{}.jpg".format(self.cfg["target"])), cv2.IMREAD_GRAYSCALE).astype(np.int32)
@@ -39,6 +40,8 @@ class shapematch(dittogym):
         self.update_obs()
         self.init_location = np.mean(self.x.to_numpy()[:self.robot_particles_num], axis=0)
         self.prev_location = self.init_location
+        self.init_object_location = np.mean(self.x.to_numpy()[self.object_particles_num:], axis=0)
+        self.prev_object_location = self.init_object_location
         self.gui = None
 
     def reset(self):
@@ -56,6 +59,8 @@ class shapematch(dittogym):
         x_numpy = self.x.to_numpy()
         self.center_point = [np.mean(x_numpy[:self.robot_particles_num, 0]),\
             np.mean(x_numpy[:self.robot_particles_num, 1])]
+        self.object_center_point = [np.mean(x_numpy[self.object_particles_num:, 0]),\
+            np.mean(x_numpy[self.object_particles_num:, 1])]
         self.set_obs_field()
         self.update_obs()
         # if not os.path.exists("./observation"):
@@ -63,6 +68,10 @@ class shapematch(dittogym):
         # cv2.imwrite("./observation/state.png", self.state[0])
         # cv2.imwrite("./observation/vx.png", self.state[1])
         # cv2.imwrite("./observation/vy.png", self.state[2])
+        if not np.isnan(self.object_center_point).any():
+            self.prev_object_location = self.object_center_point
+        else:
+            self.object_center_point = self.prev_object_location
         terminated = False
         # shape
         shape_reward = 0
@@ -77,6 +86,7 @@ class shapematch(dittogym):
         if np.isnan(self.state).any():
             raise ValueError("state has nan")   
         
+        # print(terminated)
         return (self.state, reward, terminated, False, info)
 
     def render(self, gui, record=False, record_id=None, mode=None):
@@ -102,7 +112,7 @@ class shapematch(dittogym):
             gui.set_image(image)
             self.gui.circles(
                         self.x.to_numpy() - np.array([self.anchor[None][0], 0]),
-                        radius=1.5,
+                        radius=4,
                         palette=[0xFF5722, 0x7F3CFF],
                         palette_indices=self.material)
             if not os.path.exists(self.save_file_name + "/videos/record_" + str(self.record_id)):
@@ -116,6 +126,31 @@ class shapematch(dittogym):
                 return cv2.imread(img_path)
             else:
                 return None
+
+    def add_rectangular(self, x, y, w, h, is_object=False):
+        '''
+        generate square robot with specifc density
+        changable parameter, should align with number of particles
+        (x, y) rectangular left bottom point
+        (w, h) rectangular width and height
+        '''
+        w_count = int(w / self.dx) * 6
+        h_count = int(h / self.dx) * 6
+        real_dx = w / w_count
+        real_dy = h / h_count
+
+        # print("x: " + str(x) + " y: " + str(y) + " w: " + str(w) + " h: " + str(h) + " w_count: " + str(w_count) + " h_count: " + str(h_count) + " self.dx: " + str(self.dx) + " real_dx: " + str(real_dx) + " real_dy: " + str(real_dy))
+        for i in range(h_count):
+            for j in range(w_count):
+                self.x_list.append(
+                    [
+                        x + j * real_dx + self.offset_x,
+                        y + i * real_dy + self.offset_y,
+                    ]
+                )
+                # print("x: " + str(x + (j + 0.5) * real_dx + self.offset_x) + " y: " + str(y + (i + 0.5) * real_dy + self.offset_y))
+                self.material_list.append(1 if is_object else 0)
+                self.mass_list.append(self.mass[1] if is_object else self.mass[0])
 
     @ti.kernel
     def grid_operation(self):

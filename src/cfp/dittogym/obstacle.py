@@ -132,6 +132,7 @@ class obstacle(dittogym):
             image = np.concatenate([image[start_point:512, :, :], image[:start_point, :, :]], axis=0)
             gui.set_image(image)
             self.gui.line(begin=(0, 20 / 128 - 0.015), end=(1, 20 / 128 - 0.015), radius=7, color=0x647D8E)
+            #Drawing the Stairs
             for j in range(6):
                 i = 0
                 while (26 - j) / 128 - 0.001 * i >= 20 / 128:

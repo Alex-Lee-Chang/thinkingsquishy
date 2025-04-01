@@ -404,6 +404,8 @@ class dittogym(gym.Env, ABC):
                 )
                 if self.material[p] == 0:
                     cauchy += self.F[p] @ act @ self.F[p].transpose()
+                else:
+                    cauchy *= 5
                 stress = (
                     -(self.dt * self.p_vol * 4 * self.inv_dx * self.inv_dx) * cauchy
                 )
@@ -439,8 +441,9 @@ class dittogym(gym.Env, ABC):
                     weight = w[i][0] * w[j][1]
                     new_v += weight * g_v
                     new_C += 4 * self.inv_dx * weight * g_v.outer_product(dpos)
-                self.v[p], self.C[p] = new_v, new_C
-                self.x[p] += self.dt * self.v[p]
+                if self.material[p] == 0:
+                    self.v[p], self.C[p] = new_v, new_C
+                    self.x[p] += self.dt * self.v[p]
     
     @abstractmethod
     def reset(self):
