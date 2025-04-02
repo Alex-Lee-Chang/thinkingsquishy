@@ -7,6 +7,10 @@ import numpy as np
 import taichi as ti
 from abc import ABC, abstractmethod
 
+# debugging
+import pdb
+from scipy.spatial import Delaunay
+
 @ti.data_oriented
 class dittogym(gym.Env, ABC):
     def __init__(self, cfg_path=None, action_res=None, action_res_resize=None, wandb_logger=None):
@@ -291,9 +295,12 @@ class dittogym(gym.Env, ABC):
         # cv2.imwrite('./action/y_.png', 255 * (self.grid_actuation.to_numpy()[:, :, 1].transpose(1, 0)[::-1] + self.max_actuation) / (2 * self.max_actuation))
 
 
+    
+
     @ti.kernel
     def update_particle_actuation(self):
         # G2P (Grid to particle) for action signals
+
         for p in self.x: # self.x is position of each particle
             if (
                 self.x[p][0] - self.anchor[None][0] > 1e-5  # TODO figure out exactly what anchor is, seems to be like an origin but it gets updated sometimes
@@ -379,6 +386,21 @@ class dittogym(gym.Env, ABC):
             F = U @ sig @ V.transpose()
         return F
 
+    def compute_boundary(self):
+        self.material.fill(2) # reset boundary colors
+        points_np = self.x.to_numpy()
+        tri = Delaunay(points_np)
+
+        simplices = tri.simplices
+        neighbors = tri.neighbors
+
+        for i, neighbor in enumerate(neighbors):
+            if neighbor[0] == -1 or neighbor[1] == -1 or neighbor[2] == -1:
+                self.material[simplices[i][0]] = 2
+                self.material[simplices[i][1]] = 2
+                self.material[simplices[i][2]] = 2
+
+
     @ti.kernel
     def p2g(self):
         for i, j in self.grid_m: # mass grid ?
@@ -386,7 +408,14 @@ class dittogym(gym.Env, ABC):
             self.grid_m[i, j] = 0
 
         for p in self.x:  # Particle to grid (P2G)
+
             h = 0.05
+
+            # print("particle positions")
+            # print(self.x[p][0])
+            # print(self.x[p][1])
+            
+
             mu, la = self.mu_0 * h, self.lambda_0 * h
             if (
                 self.x[p][0] - self.anchor[None][0] > 1e-5
@@ -406,6 +435,9 @@ class dittogym(gym.Env, ABC):
                     self.F[p] = self.compute_von_mises( # TODO check if this evaluates plastic deformation thresholds
                         self.F[p], self.U[p], self.sig[p], self.V[p], self.yield_stress, mu
                     )
+
+                # DETERMINE OUTER MATERIALS HERE, SET MATERIAL INDEX TO 2, REMEMBER TO RESET
+
                 J = self.F[p].determinant()
                 r, s = ti.polar_decompose(self.F[p])
                 act = ( # Get the x and y actions

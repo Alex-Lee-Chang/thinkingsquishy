@@ -47,9 +47,10 @@ class shapematch(dittogym):
 
     def step(self, action):
         self.update_grid_actuation(action)
-        for i in range(self.repeat_times):
+        for i in range(self.repeat_times): # self.repeat_times gives how many times to update simulation per step
             self.update_particle_actuation()
-            self.p2g()
+            self.compute_boundary()
+            self.p2g() 
             self.grid_operation()
             self.g2p()
         # state (relative x, y)
@@ -80,6 +81,10 @@ class shapematch(dittogym):
         return (self.state, reward, terminated, False, info)
 
     def render(self, gui, record=False, record_id=None, mode=None):
+
+        # to force rendering
+        self.record_id = "push-restrict"
+
         self.gui = gui
         if not record:
             self.visualize = False
@@ -101,9 +106,9 @@ class shapematch(dittogym):
             image = np.concatenate([image[start_point:512, :, :], image[:start_point, :, :]], axis=0)
             gui.set_image(image)
             self.gui.circles(
-                        self.x.to_numpy() - np.array([self.anchor[None][0], 0]),
+                        self.x.to_numpy() - np.array([self.anchor[None][0], 0]), 
                         radius=1.5,
-                        palette=[0xFF5722, 0x7F3CFF],
+                        palette=[0xFF5722, 0x7F3CFF, 0x00FF00],
                         palette_indices=self.material)
             if not os.path.exists(self.save_file_name + "/videos/record_" + str(self.record_id)):
                 os.makedirs(self.save_file_name + "/videos/record_" + str(self.record_id))

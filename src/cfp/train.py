@@ -180,6 +180,8 @@ for i_episode in itertools.count(1):
         else:
             visualize_gap += 1
 
+    render = True # just always render for testing
+
     # training loop
     while not done:
         if args.start_steps > total_numsteps:
