@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 # debugging
 import pdb
 from scipy.spatial import Delaunay
+import triangle
 
 @ti.data_oriented
 class dittogym(gym.Env, ABC):
@@ -386,20 +387,32 @@ class dittogym(gym.Env, ABC):
             F = U @ sig @ V.transpose()
         return F
 
-    def compute_boundary(self):
-        self.material.fill(2) # reset boundary colors
+    def compute_delaunay(self):
+        self.material.fill(0)
         points_np = self.x.to_numpy()
-        tri = Delaunay(points_np)
 
-        simplices = tri.simplices
-        neighbors = tri.neighbors
+        # triangles implementation
+        delaunay = triangle.triangulate({'vertices':points_np}, 'c')
 
-        for i, neighbor in enumerate(neighbors):
-            if neighbor[0] == -1 or neighbor[1] == -1 or neighbor[2] == -1:
-                self.material[simplices[i][0]] = 2
-                self.material[simplices[i][1]] = 2
-                self.material[simplices[i][2]] = 2
+        delaunay = np.concatenate(delaunay['segments'])
 
+        
+        #print(len(delaunay))
+        for i in delaunay:
+            self.material[i] = 2
+
+        # print("finished delaunay")
+        # scipy implementation
+        # tri = Delaunay(points_np)
+
+        # simplices = tri.simplices
+        # neighbors = tri.neighbors
+
+        # for i, neighbor in enumerate(neighbors):
+        #     if neighbor[0] == -1 or neighbor[1] == -1 or neighbor[2] == -1:
+        #         self.material[simplices[i][0]] = 2
+        #         self.material[simplices[i][1]] = 2
+        #         self.material[simplices[i][2]] = 2
 
     @ti.kernel
     def p2g(self):
