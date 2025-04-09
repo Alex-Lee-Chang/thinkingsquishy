@@ -41,15 +41,25 @@ class shapematch(dittogym):
         self.prev_location = self.init_location
         self.gui = None
 
+
+        
+
+
     def reset(self):
         self.reset_()
+        self.counter = 0
         return self.state
 
     def step(self, action):
         self.update_grid_actuation(action)
         for i in range(self.repeat_times): # self.repeat_times gives how many times to update simulation per step
             self.update_particle_actuation()
-            self.compute_delaunay()
+            
+            if self.counter < 1:
+                self.compute_boundary_grid()
+                
+            self.counter += 1
+
             self.p2g() 
             self.grid_operation()
             self.g2p()
@@ -83,7 +93,7 @@ class shapematch(dittogym):
     def render(self, gui, record=False, record_id=None, mode=None):
 
         # to force rendering
-        self.record_id = "push-restrict"
+        #self.record_id = "push-restrict"
 
         self.gui = gui
         if not record:

@@ -69,7 +69,7 @@ ti.init(arch=ti.gpu, random_seed=args.seed)
 
 # GUI
 if args.visualize:
-    gui = ti.GUI("DittoGym", res=512, show_gui=False)
+    gui = ti.GUI("DittoGym", res=512, show_gui=True)
 
 # Wandb
 if args.wandb:

@@ -9,8 +9,11 @@ from abc import ABC, abstractmethod
 
 # debugging
 import pdb
-from scipy.spatial import Delaunay
+from scipy.spatial import Delaunay, ConvexHull
 import triangle
+import math
+from collections import defaultdict
+
 
 @ti.data_oriented
 class dittogym(gym.Env, ABC):
@@ -293,7 +296,8 @@ class dittogym(gym.Env, ABC):
         # if not os.path.exists("./action"):
         #     os.makedirs("./action")
         # cv2.imwrite('./action/x_.png', 255 * (self.grid_actuation.to_numpy()[:, :, 0].transpose(1, 0)[::-1] + self.max_actuation) / (2 * self.max_actuation))
-        # cv2.imwrite('./action/y_.png', 255 * (self.grid_actuation.to_numpy()[:, :, 1].transpose(1, 0)[::-1] + self.max_actuation) / (2 * self.max_actuation))
+        # cv2.imwrite('./action/y_.png', 255 * (self.
+        # on.to_numpy()[:, :, 1].transpose(1, 0)[::-1] + self.max_actuation) / (2 * self.max_actuation))
 
 
     
@@ -387,22 +391,82 @@ class dittogym(gym.Env, ABC):
             F = U @ sig @ V.transpose()
         return F
 
-    def compute_delaunay(self):
-        self.material.fill(0)
+    def compute_boundary_grid(self):
+        self.material.fill(2)
+
         points_np = self.x.to_numpy()
+
+        grid_size = .005
+
+        xmin, ymin = points_np.min(axis=0)
+        xmax, ymax = points_np.max(axis=0)
+
+        grid_x_size = math.ceil((xmax - xmin) / grid_size) + 2
+        grid_y_size = math.ceil((ymax - ymin) / grid_size) + 2
+        grid = np.empty((grid_x_size, grid_y_size), dtype=object)
+
+        grid_indices = (((points_np - [xmin, ymin]) // grid_size) + 1).astype(int)
+
+        grid = defaultdict(list)
+
+        for i, gridcoords in enumerate(grid_indices):
+
+            grid_indices_x = gridcoords[0]
+            grid_indices_y = gridcoords[1]
+
+            key = grid_indices_x + grid_indices_y * grid_x_size 
+            grid[key].append(i)
+
+        boundary_indices = []
+
+        for cell in grid:
+            if (cell-1 not in grid):
+                boundary_indices.append(cell)
+                boundary_indices.append(cell+1)
+            elif (cell+1 not in grid):
+                boundary_indices.append(cell)
+                boundary_indices.append(cell-1)
+            elif (cell-grid_x_size not in grid):
+                boundary_indices.append(cell)
+                boundary_indices.append(cell+grid_x_size)
+            elif (cell+grid_x_size not in grid):
+                boundary_indices.append(cell)
+                boundary_indices.append(cell-grid_x_size)
+            elif (cell-1-grid_x_size not in grid):
+                boundary_indices.append(cell)
+                boundary_indices.append(cell+grid_x_size+1)
+            elif (cell+1-grid_x_size not in grid):
+                boundary_indices.append(cell)
+                boundary_indices.append(cell+grid_x_size-1)
+            elif (cell-1+grid_x_size not in grid):
+                boundary_indices.append(cell)
+                boundary_indices.append(cell-grid_x_size-1)
+            elif (cell+1+grid_x_size not in grid):
+                boundary_indices.append(cell)
+                boundary_indices.append(cell-grid_x_size+1)
+
+        boundary_indices = np.concatenate([grid[cell] for cell in boundary_indices], axis=0)
+        
+        for i in boundary_indices:
+            self.material[i] = 0
+
+    def compute_boundary_delaunay(self):
+        #self.material.fill(0)
+        points_np = self.x.to_numpy()
+
+        # scipy convexhull implementation
+        # hull = ConvexHull(points_np)
+        # for i in hull.vertices:
+        #     self.material[i] = 2
 
         # triangles implementation
         delaunay = triangle.triangulate({'vertices':points_np}, 'c')
 
         delaunay = np.concatenate(delaunay['segments'])
-
-        
-        #print(len(delaunay))
         for i in delaunay:
             self.material[i] = 2
 
-        # print("finished delaunay")
-        # scipy implementation
+        # scipy Delaunay implementation
         # tri = Delaunay(points_np)
 
         # simplices = tri.simplices
@@ -424,11 +488,6 @@ class dittogym(gym.Env, ABC):
 
             h = 0.05
 
-            # print("particle positions")
-            # print(self.x[p][0])
-            # print(self.x[p][1])
-            
-
             mu, la = self.mu_0 * h, self.lambda_0 * h
             if (
                 self.x[p][0] - self.anchor[None][0] > 1e-5
@@ -448,8 +507,6 @@ class dittogym(gym.Env, ABC):
                     self.F[p] = self.compute_von_mises( # TODO check if this evaluates plastic deformation thresholds
                         self.F[p], self.U[p], self.sig[p], self.V[p], self.yield_stress, mu
                     )
-
-                # DETERMINE OUTER MATERIALS HERE, SET MATERIAL INDEX TO 2, REMEMBER TO RESET
 
                 J = self.F[p].determinant()
                 r, s = ti.polar_decompose(self.F[p])
