@@ -441,8 +441,11 @@ class dittogym(gym.Env, ABC):
                     weight = w[i][0] * w[j][1]
                     new_v += weight * g_v
                     new_C += 4 * self.inv_dx * weight * g_v.outer_product(dpos)
-                if self.material[p] == 0:
+                if self.material[p] == 0: #only change the velocity of the robot
                     self.v[p], self.C[p] = new_v, new_C
+                    self.x[p] += self.dt * self.v[p]
+                else:
+                    self.v[p] = [0, 2]
                     self.x[p] += self.dt * self.v[p]
     
     @abstractmethod

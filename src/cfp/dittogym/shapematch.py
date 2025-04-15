@@ -19,7 +19,7 @@ class shapematch(dittogym):
             self.add_self_designed_robot(robot_img_path, particles_num)
         else:
             self.add_circle(0.0, 0.0, 0.17, is_object=False)
-        self.add_rectangular(0.08, -0.4, 0.01, 0.3, is_object=True)
+        self.add_rectangular(-0.05, -0.4, 0.2, 0.3, is_object=True)
         print("n_particles: ", self.n_particles, "action_space: ", self.action_space.shape)
         self.target_robot = cv2.imread(os.path.join(self.current_directory,\
             "./target_for_shape_match/{}.jpg".format(self.cfg["target"])), cv2.IMREAD_GRAYSCALE).astype(np.int32)
