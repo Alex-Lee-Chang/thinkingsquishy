@@ -93,7 +93,7 @@ class shapematch(dittogym):
     def render(self, gui, record=False, record_id=None, mode=None):
 
         # to force rendering
-        #self.record_id = "push-restrict"
+        # self.record_id = "push-restrict"
 
         self.gui = gui
         if not record:

@@ -1,0 +1,9 @@
+name: thinkingsquishy
+channels:
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+  - https://repo.anaconda.com/pkgs/msys2
+  - conda-forge
+dependencies:
+  - python=3.11.9
+prefix: K:\kevy0\conda\envs\thinkingsquishy
