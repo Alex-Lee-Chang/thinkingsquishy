@@ -135,12 +135,15 @@ if args.wandb:
     wandb.define_metric("train_episode_reward", step_metric="episode_num")
     wandb.define_metric("train_episode_normalize_reward", step_metric="episode_num")
     wandb.define_metric("train_episode_length", step_metric="episode_num")
+    wandb_logger = wandb
+else:
+    wandb_logger = None
 
 # Device
 device = torch.device("cuda" if args.cuda else "cpu")
 
 # Environment
-env = gym.make(args.env_name, cfg_path=file_path + "/config.json", wandb_logger=wandb)
+env = gym.make(args.env_name, cfg_path=file_path + "/config.json", wandb_logger=wandb_logger)
 
 # Random
 utils.set_random_seed(args.seed, args.cuda_deterministic)
