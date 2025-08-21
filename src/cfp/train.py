@@ -112,6 +112,9 @@ if args.visualize:
     gui = ti.GUI("Dittogym", res=512, show_gui=args.gui)
 
 # Wandb
+ 
+args.wandb = False # Override parser
+
 if args.wandb:
     wandb.init(project=args.env_name, name=args.name)
     wandb.config.update(args)
