@@ -110,9 +110,6 @@ class run(dittogym):
 
     def render(self, gui, record=False, record_id=None, mode=None):
 
-        # force rendering
-        # self.record_id = "run-restrict"
-
         self.gui = gui
         if not record:
             self.visualize = False
