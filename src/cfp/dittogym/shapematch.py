@@ -41,25 +41,26 @@ class shapematch(dittogym):
         self.prev_location = self.init_location
         self.gui = None
 
+        self.total_numsteps = 0
 
         
 
 
     def reset(self):
         self.reset_()
-        self.counter = 0
+        self.counter = True
         return self.state
 
     def step(self, action):
         self.update_grid_actuation(action)
+
+        if self.counter:
+            self.compute_boundary_radial(self.center_point, self.total_numsteps)
+            self.counter = False
+        self.total_numsteps += 1
+
         for i in range(self.repeat_times): # self.repeat_times gives how many times to update simulation per step
             self.update_particle_actuation()
-            
-            if self.counter < 1:
-                self.compute_boundary_grid()
-                
-            self.counter += 1
-
             self.p2g() 
             self.grid_operation()
             self.g2p()

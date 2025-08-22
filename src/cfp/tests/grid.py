@@ -4,10 +4,10 @@ from collections import defaultdict
 
 
 with open("shape.txt", 'r') as f:
-        lines = f.readlines()
-        points_np = np.array([list(map(float, line.strip().split())) for line in lines])
+    lines = f.readlines()
+    points_np = np.array([list(map(float, line.strip().split())) for line in lines])
 
-grid_size = .005
+grid_size = .004
 
 xmin, ymin = points_np.min(axis=0)
 xmax, ymax = points_np.max(axis=0)

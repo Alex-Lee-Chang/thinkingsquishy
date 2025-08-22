@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=thinkingsquishy_test     # create a short name for your job
+#SBATCH --job-name=boundary_scaling_linear     # create a short name for your job
 #SBATCH --nodes=1                # node count
 #SBATCH --ntasks=1               # total number of tasks across all nodes
 #SBATCH --cpus-per-task=1        # cpu-cores per task (>1 if multi-threaded tasks)
@@ -15,4 +15,4 @@ module purge
 module load anaconda3/2024.10
 conda activate thinkingsquishy
 
-python train.py --env_name shapematch-coarse-v0 --config_file_path ./models/shapematch/coarse.json --visualize True --visualize_interval 0
+python train.py --env_name shapematch-coarse-v0 --config_file_path ./models/shapematch/coarse.json --visualize True --visualize_interval 5

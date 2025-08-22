@@ -478,6 +478,19 @@ class dittogym(gym.Env, ABC):
         #         self.material[simplices[i][1]] = 2
         #         self.material[simplices[i][2]] = 2
 
+    def compute_boundary_radial(self, center, total_numsteps):
+        self.material.fill(2)
+
+        points_np = self.x.to_numpy()
+        # Radius of circle is 0.085; 0.065 provides a good min thickness
+        radius = 0.065 * (total_numsteps / 5000000)
+
+        distances = np.linalg.norm(points_np - center, axis=1)
+        filtered_indices = np.where(distances > radius)
+
+        for i in filtered_indices[0]:
+            self.material[i] = 0
+
     @ti.kernel
     def p2g(self):
         for i, j in self.grid_m: # mass grid ?
