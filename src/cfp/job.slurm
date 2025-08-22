@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=della_test     # create a short name for your job
+#SBATCH --job-name=thinkingsquishy_test     # create a short name for your job
 #SBATCH --nodes=1                # node count
 #SBATCH --ntasks=1               # total number of tasks across all nodes
 #SBATCH --cpus-per-task=1        # cpu-cores per task (>1 if multi-threaded tasks)
-#SBATCH --mem-per-cpu=4G         # memory per cpu-core (4G is default)
+#SBATCH --mem-per-cpu=2G         # memory per cpu-core (4G is default)
 #SBATCH --gres=gpu:1             # number of GPUs per node
 #SBATCH --time=00:15:00          # total run time limit (HH:MM:SS)
 #SBATCH --mail-type=begin        # send email when job begins
@@ -15,4 +15,4 @@ module purge
 module load anaconda3/2024.10
 conda activate thinkingsquishy
 
-python train.py --env_name RUN-coarse-v0 --config_file_path ./models/RUN/coarse.json
+python train.py --env_name shapematch-coarse-v0 --config_file_path ./models/shapematch/coarse.json --visualize True --visualize_interval 0

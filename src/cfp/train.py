@@ -172,21 +172,15 @@ for i_episode in itertools.count(1):
     done = False
     state = env.reset()
     env.render(gui, record=False)
-    if args.visualize and total_numsteps >= args.start_steps\
-        and visualize_gap == args.visualize_interval:
+    if args.visualize and visualize_gap == args.visualize_interval:
         env.render(gui, record=True, record_id=total_numsteps)
         generate_video = total_numsteps
         visualize_gap = 0
         render = True
-    else:
+    elif args.visualize:
         generate_video = None
         render = False
-        if not total_numsteps >= args.start_steps:
-            visualize_gap = 0
-        else:
-            visualize_gap += 1
-
-    #render = True # just always render for testing
+        visualize_gap += 1
 
     # training loop
     while not done:
