@@ -483,7 +483,7 @@ class dittogym(gym.Env, ABC):
 
         points_np = self.x.to_numpy()
         # Radius of circle is 0.085; 0.065 provides a good min thickness
-        schedule = 30000 # How fast will full boundary be achieved
+        schedule = 45000 # In how many steps will full boundary be achieved
         radius = 0.065 * (total_numsteps / schedule)
 
         distances = np.linalg.norm(points_np - center, axis=1)
