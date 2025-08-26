@@ -15,4 +15,4 @@ module purge
 module load anaconda3/2024.10
 conda activate thinkingsquishy
 
-python train.py --env_name shapematch-coarse-v0 --config_file_path ./models/shapematch/coarse.json --visualize True --visualize_interval 5 --lr 5e-5
+python train.py --env_name shapematch-coarse-v0 --config_file_path ./models/shapematch/coarse.json --visualize True --visualize_interval 5 --lr 2.5e-5
