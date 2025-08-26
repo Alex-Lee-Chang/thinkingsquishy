@@ -484,7 +484,8 @@ class dittogym(gym.Env, ABC):
         points_np = self.x.to_numpy()
         # Radius of circle is 0.085; 0.065 provides a good min thickness
         schedule = 30000 # In how many steps will full boundary be achieved
-        radius = 0.045 * (total_numsteps / schedule)
+        max_rad = 0.045
+        radius = min(max_rad * (total_numsteps / schedule),max_rad)
 
         distances = np.linalg.norm(points_np - center, axis=1)
         filtered_indices = np.where(distances > radius)
